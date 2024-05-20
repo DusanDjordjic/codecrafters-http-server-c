@@ -10,7 +10,7 @@
 int main() {
 	// Disable output buffering
 	setbuf(stdout, NULL);
-	
+
 	int server_fd = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_fd == -1 ) {
 		printf("failed to create socket: %s\n", strerror(errno));
@@ -19,7 +19,7 @@ int main() {
 
 	int reuse = 1;
 	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-		printf("SO_REUSEPORT failed: %s\n", strerrno(errno));
+		printf("SO_REUSEPORT failed: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -30,7 +30,7 @@ int main() {
 	};
 
 	if (bind(server_fd, (struct sockaddr *) &server_address, sizeof(server_address)) != 0) {
-		printf("failed to bind socket: %s\n", strerrno(errno));
+		printf("failed to bind socket: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -40,14 +40,14 @@ int main() {
 		return 1;
 	}
 
-	printf("waiting for client connection...");
+	printf("waiting for client connection...\n");
 	
 
 	struct sockaddr_in client_address;
 	int client_address_len = sizeof(client_address);  
 
 	accept(server_fd, (struct sockaddr *) &client_address, &client_address_len);
-	printf("client connected");
+	printf("client connected\n");
 
 	close(server_fd);
 
