@@ -46,8 +46,25 @@ int main() {
 	struct sockaddr_in client_address;
 	int client_address_len = sizeof(client_address);  
 
-	accept(server_fd, (struct sockaddr *) &client_address, &client_address_len);
+	int client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_address_len);
 	printf("client connected\n");
+
+	// char buffer[1024] = {0};
+	// int read_num = recv(client_socket, buffer, sizeof(buffer), 0);
+	// if (read_num == 0) {
+	// 	printf("EOF\n");
+	// } else if (read_num == -1) {
+	// 	printf("failed to read data from socket: %s\n", strerror(errno));
+	// 	return -1;
+	// }
+
+	// printf("Received %d %s", read_num, buffer);
+
+	char* response_ok = "HTTP/1.1 200 OK\r\n\r\n";
+	if (send(client_socket, response_ok, strlen(response_ok), 0) == -1) {
+		printf("failed to write data to client: %s\n", strerror(errno));
+		return -1;
+	}
 
 	close(server_fd);
 
