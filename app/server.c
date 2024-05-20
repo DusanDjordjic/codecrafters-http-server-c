@@ -49,22 +49,49 @@ int main() {
 	int client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_address_len);
 	printf("client connected\n");
 
-	// char buffer[1024] = {0};
-	// int read_num = recv(client_socket, buffer, sizeof(buffer), 0);
-	// if (read_num == 0) {
-	// 	printf("EOF\n");
-	// } else if (read_num == -1) {
-	// 	printf("failed to read data from socket: %s\n", strerror(errno));
-	// 	return -1;
-	// }
+	char buffer[1024] = {0};
+	int read_num = recv(client_socket, buffer, sizeof(buffer), 0);
+	if (read_num == 0) {
+		printf("EOF\n");
+	} else if (read_num == -1) {
+		printf("failed to read data from socket: %s\n", strerror(errno));
+		return -1;
+	}
+	
+	char* request;
+	request = strtok(buffer, "\r\n");
+	if (request == NULL) {
+		printf("failed to read request line\n");
+		return -1;
+	}
 
-	// printf("Received %d %s", read_num, buffer);
+	char* method = strtok(request, " ");
+	if (strncmp(method, "GET", 3) > 0) {
+		printf("method is not GET != %ss\n", method);
+		return -1;
+	}
 
-	char* response_ok = "HTTP/1.1 200 OK\r\n\r\n";
-	if (send(client_socket, response_ok, strlen(response_ok), 0) == -1) {
+	char* path = strtok(NULL, " ");
+	if (strlen(path) == 1) {
+		if (path[0] == '/') {
+			char* response_ok = "HTTP/1.1 200 OK\r\n\r\n";
+			if (send(client_socket, response_ok, strlen(response_ok), 0) == -1) {
+				printf("failed to write data to client: %s\n", strerror(errno));
+				return -1;
+			}
+		}
+
+		close(server_fd);
+		return 0;
+	}
+
+	char* response_not_found = "HTTP/1.1 404 Not Found\r\n\r\n";
+	if (send(client_socket, response_not_found, strlen(response_not_found), 0) == -1) {
 		printf("failed to write data to client: %s\n", strerror(errno));
 		return -1;
 	}
+
+	// printf("Received %d %s", read_num, buffer);
 
 	close(server_fd);
 
