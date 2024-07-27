@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/socket.h>
@@ -78,7 +79,7 @@ int main() {
             goto SEND_SERVER_ERROR;
         }
 
-        err = response_end(&res);
+        err = with_no_body(&res);
         if (err != 0) {
             fprintf(stderr, "failed to end response error %d\n", err);
             response_dealloc(&res);
@@ -104,7 +105,7 @@ int main() {
                 goto SEND_SERVER_ERROR;
             }
 
-            err = response_end(&res);
+            err = with_no_body(&res);
             if (err != 0) {
                 fprintf(stderr, "failed to end response error %d\n", err);
                 response_dealloc(&res);
@@ -117,47 +118,55 @@ int main() {
 
             response_dealloc(&res);
             goto DONE;
-		} else {
-            printf("PATH: %s\n", req.path);
-            char* token = strtok(req.path, "/");
-            if (token == NULL) {
-                fprintf(stderr, "failed to tokenize path");
+		} 
+
+        char* user_agent_path = "/user-agent";
+        if (strlen(req.path) == strlen(user_agent_path)) {
+        if (strcmp(req.path, "/user-agent") == 0){
+            for (uint16_t i = 0; i < req.header_count; i++) {
+
+            }
+        }
+
+        }
+        printf("PATH: %s\n", req.path);
+        char* token = strtok(req.path, "/");
+        if (token == NULL) {
+            fprintf(stderr, "failed to tokenize path");
+            goto SEND_SERVER_ERROR;
+        }
+        
+        if (strncmp(token, "echo", 4) == 0) {
+
+            token = strtok(NULL, "/");
+
+            Response res;
+            err = response_new(&res, OK);
+            if (err != 0) {
+                fprintf(stderr, "failed to create new respnse ok error %d\n", err);
                 goto SEND_SERVER_ERROR;
             }
-            
-            if (strncmp(token, "echo", 4) == 0) {
 
-                token = strtok(NULL, "/");
-
-                Response res;
-                err = response_new(&res, OK);
-                if (err != 0) {
-                    fprintf(stderr, "failed to create new respnse ok error %d\n", err);
-                    goto SEND_SERVER_ERROR;
-                }
-
-                err = with_header(&res, "Content-Type", "text/plain");
-                if (err != 0) {
-                    fprintf(stderr, "failed to add header resonse ok error %d\n", err);
-                    response_dealloc(&res);
-                    goto SEND_SERVER_ERROR;
-                }
-        
-                err = with_body(&res, token);
-                if (err != 0) {
-                    fprintf(stderr, "failed to add body %d\n", err);
-                    response_dealloc(&res);
-                    goto SEND_SERVER_ERROR;
-                }    
-
-                if (send(client_socket, res.buffer, res.buffer_len, 0) == -1) {
-                    fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
-                }
-
+            err = with_header(&res, "Content-Type", "text/plain");
+            if (err != 0) {
+                fprintf(stderr, "failed to add header resonse ok error %d\n", err);
                 response_dealloc(&res);
-                goto DONE;
+                goto SEND_SERVER_ERROR;
+            }
+    
+            err = with_body(&res, token);
+            if (err != 0) {
+                fprintf(stderr, "failed to add body %d\n", err);
+                response_dealloc(&res);
+                goto SEND_SERVER_ERROR;
+            }    
+
+            if (send(client_socket, res.buffer, res.buffer_len, 0) == -1) {
+                fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
             }
 
+            response_dealloc(&res);
+            goto DONE;
 
         }
 	}

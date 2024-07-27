@@ -59,23 +59,6 @@ int response_new(Response* res, HTTP_STATUS status) {
     return 0;
 }
 
-int response_end(Response* res) {
-    if (res->buffer_len + 2 > res->buffer_cap) {
-        // Realloc buffer
-        int err = realloc_buffer(&(res->buffer), &(res->buffer_cap));
-        if (err != 0) {
-            fprintf(stderr, "failed to alloc buffer to add \\r\\n");
-            response_dealloc(res);
-            return err;
-        }  
-    }
-
-
-    strncpy(res->buffer + res->buffer_len, "\r\n", 2);
-    res->buffer_len += 2;
-
-    return 0;
-}
 
 int with_header(Response* res, char* header, char* value) {
     if (res->done) {
@@ -150,6 +133,23 @@ int with_body(Response* res, char* body) {
     return 0;
 }
 
+int with_no_body(Response* res) {
+    if (res->buffer_len + 2 > res->buffer_cap) {
+        // Realloc buffer
+        int err = realloc_buffer(&(res->buffer), &(res->buffer_cap));
+        if (err != 0) {
+            fprintf(stderr, "failed to alloc buffer to add \\r\\n");
+            response_dealloc(res);
+            return err;
+        }  
+    }
+
+
+    strncpy(res->buffer + res->buffer_len, "\r\n", 2);
+    res->buffer_len += 2;
+
+    return 0;
+}
 void response_dealloc(Response* res) {
     if (res->buffer != NULL) {
         free(res->buffer);

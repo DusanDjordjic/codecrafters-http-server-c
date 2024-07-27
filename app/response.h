@@ -26,6 +26,6 @@ typedef struct response {
 int response_new(Response* res, HTTP_STATUS status);
 int with_header(Response* res, char* header, char* value);
 int with_body(Response* res, char* body);
-int response_end(Response* res);
+int with_no_body(Response* res);
 void response_dealloc(Response* res);
 #endif
