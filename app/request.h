@@ -21,17 +21,22 @@ typedef enum http_method {
     GET,
     POST,
     PUT,
-    DELETE, 
     PATCH,
+    DELETE, 
     OPTIONS, 
 } HTTP_METHOD;
+
+typedef struct {
+    char* key;
+    char* value;
+} Header;
 
 typedef struct request {
     char* buffer;
     HTTP_METHOD method;
     char* path;
     char* body;
-    char** headers;
+    Header* headers;
     uint16_t header_count;
     bool done;
 } Request;
@@ -53,5 +58,7 @@ int request_parse(Request* req, char* blob);
 //
 // Returns 0 if there are no errors and 1 otherwise
 int request_dealloc(Request* req);
+
+Header* request_header_get(Request* req, const char* header);
 
 #endif

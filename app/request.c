@@ -25,14 +25,14 @@ int request_parse(Request *req, char *buffer) {
 		return ERR_REQ_PARSE_FAILED_TO_PARSE_REQ_STATUS_LINE;
 	}
 
-    char** headers = malloc(sizeof(char*) * 10);
-    uint16_t headers_count = 0;
     uint16_t header_cap = 10;
+    uint16_t headers_count = 0;
+    Header* headers = malloc(sizeof(Header) * header_cap);
     char* token = strtok(NULL, "\r\n");
     while (token != NULL) {
         if (headers_count == header_cap) {
             header_cap += 10;
-            char** new_headers = realloc(headers, sizeof(char*) * header_cap);
+            Header* new_headers = realloc(headers, sizeof(Header) * header_cap);
             if (new_headers == NULL) {
                 fprintf(stderr, "Failed to reallocate headers %s\n", strerror(errno));
                 request_dealloc(req);
@@ -44,7 +44,7 @@ int request_parse(Request *req, char *buffer) {
 
         char* header = token;
         token = strtok(NULL, "\r\n");
-        headers[headers_count] = header;
+        headers[headers_count].key = header;
         headers_count++;
     }
     
@@ -54,8 +54,6 @@ int request_parse(Request *req, char *buffer) {
     // headers[headers_count] = NULL;
 
     req->header_count = headers_count;
-
-
 
 	char* method = strtok(request_line, " ");
 	if (strncmp(method, "GET", 3) == 0) {
@@ -84,18 +82,43 @@ int request_parse(Request *req, char *buffer) {
         return ERR_REQ_PARSE_INVALID_PATH;
     }
     req->path = path;
+
+    // Split headers into key and value
+    for (uint16_t i = 0; i < req->header_count; i++) {
+        char* key = strtok(headers[i].key, ":");
+        char* value = strtok(NULL, ":");
+        headers[i].key = key;  
+        headers[i].value = value;  
+    }
+    req->headers = headers;
+
     req->done = true;
 
     printf("method %d\n", req->method);
     printf("path \"%s\"\n", req->path);
     printf("header count %d\n", req->header_count);
     for (uint16_t i = 0; i < req->header_count; i++) {
-        printf("header \"%s\"\n", headers[i]);
+        printf("header \"%s:%s\"\n", headers[i].key, headers[i].value);
     }
+
     printf("body \"%s\"\n", req->body);
     return 0;
 }
 
+Header* request_header_get(Request* req, const char* header) {
+    uint32_t len = strlen(header);
+    if (len == 0) {
+        return NULL;
+    }
+
+    for (uint16_t i = 0; i < req->header_count; i++) {
+        if (strncmp(req->headers[i].key, header, len) == 0) {
+            return req->headers + i;
+        }
+    }
+
+    return NULL;
+}
 
 int request_dealloc(Request* req) {
     if (req == NULL) {

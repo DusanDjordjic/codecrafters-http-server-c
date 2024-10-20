@@ -7,6 +7,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <pthread.h>
 
 #include "request.h"
 #include "response.h"
@@ -52,21 +53,20 @@ int main() {
 	int client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_address_len);
 	printf("client connected\n");
 
-	char buffer[1024] = {0};
-	int read_num = recv(client_socket, buffer, sizeof(buffer), 0);
-	if (read_num == 0) {
-		printf("EOF\n");
-	} else if (read_num == -1) {
-		printf("failed to read data from socket: %s\n", strerror(errno));
-		return -1;
-	}
-
+    char buffer[1024] = {0};
+    int read_num = recv(client_socket, buffer, sizeof(buffer), 0);
+    if (read_num == 0) {
+        printf("EOF\n");
+    } else if (read_num == -1) {
+        printf("failed to read data from socket: %s\n", strerror(errno));
+        return -1;
+    }
 
     Request req = {0};
     int err = request_parse(&req, buffer);
     if (err != 0) {
         close(client_socket);
-		close(server_fd);
+        close(server_fd);
         exit(err);
     }
 
@@ -95,9 +95,9 @@ int main() {
     }
 
 
-	if (req.path[0] == '/') {
+    if (req.path[0] == '/') {
         // split path into chunks
-	    if (strlen(req.path) == 1) {
+        if (strlen(req.path) == 1) {
             Response res;
             err = response_new(&res, OK);
             if (err != 0) {
@@ -112,13 +112,13 @@ int main() {
                 goto SEND_SERVER_ERROR;
             }
 
-			if (send(client_socket, res.buffer, res.buffer_len, 0) == -1) {
-				fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
-			}
+            if (send(client_socket, res.buffer, res.buffer_len, 0) == -1) {
+                fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
+            }
 
             response_dealloc(&res);
             goto DONE;
-		} 
+        } 
 
         char* user_agent_path = "/user-agent";
         if (strlen(req.path) == strlen(user_agent_path)) {
@@ -167,32 +167,66 @@ int main() {
 
             response_dealloc(&res);
             goto DONE;
+        } else if (strncmp(token, "user-agent", 10) == 0) {
+            
+            Header* h = request_header_get(&req, "User-Agent");
+            if (h == NULL) {
+                goto SEND_NOT_FOUND;                
+            }
+            Response res;
+            err = response_new(&res, OK);
+            if (err != 0) {
+                fprintf(stderr, "failed to create new respnse ok error %d\n", err);
+                goto SEND_SERVER_ERROR;
+            }
 
+            err = with_header(&res, "Content-Type", "text/plain");
+            if (err != 0) {
+                fprintf(stderr, "failed to add header resonse ok error %d\n", err);
+                response_dealloc(&res);
+                goto SEND_SERVER_ERROR;
+            }
+            
+            err = with_body(&res, h->value);
+            if (err != 0) {
+                fprintf(stderr, "failed to add body %d\n", err);
+                response_dealloc(&res);
+                goto SEND_SERVER_ERROR;
+            }    
+
+            if (send(client_socket, res.buffer, res.buffer_len, 0) == -1) {
+                fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
+            }
+
+            response_dealloc(&res);
+            goto DONE;
         }
-	}
+    }
 
     goto SEND_NOT_FOUND;
 
 SEND_SERVER_ERROR:
     fprintf(stderr, "Sending server error"); 
-	char* response_internal = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
-	if (send(client_socket, response_internal, strlen(response_internal), 0) == -1) {
-		fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
-	}
+    char* response_internal = "HTTP/1.1 500 Internal Server Error\r\n\r\n";
+    if (send(client_socket, response_internal, strlen(response_internal), 0) == -1) {
+        fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
+    }
     goto DONE;
 
 SEND_NOT_FOUND:
     fprintf(stderr, "Sending not found"); 
-	char* response_not_found = "HTTP/1.1 404 Not Found\r\n\r\n";
-	if (send(client_socket, response_not_found, strlen(response_not_found), 0) == -1) {
-		fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
-	}
+    char* response_not_found = "HTTP/1.1 404 Not Found\r\n\r\n";
+    if (send(client_socket, response_not_found, strlen(response_not_found), 0) == -1) {
+        fprintf(stderr, "failed to write data to client: %s\n", strerror(errno));
+    }
     goto DONE;
 
 DONE:
     request_dealloc(&req);
+
     close(client_socket);
 	close(server_fd);
 
 	return 0;
 }
+
